@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 
 
-class MakeWhiteout:
+class MakeProducts:
 
     def __init__(self, args):
 
@@ -17,7 +17,7 @@ class MakeWhiteout:
         self.outdir = Path(args.outdir)
         logging.debug("Using output directory %s" % self.outdir)
 
-    def run(self):
+    def makeWhiteout(self):
 
         sz = len(self.inputs)
         logging.info("Processing %d images" % sz)
@@ -41,8 +41,28 @@ class MakeWhiteout:
             outimg = (fimg * 255).astype(np.ubyte)
             cv2.imwrite(str(outfile), outimg)
 
-
         return
+
+    def makeSwir(self):
+
+        for file in self.inputs:
+            infile = Path(file)
+            outfile = self.outdir / infile.name
+            logging.debug("Transforming %s to %s" % (infile, outfile))
+
+            img = cv2.imread(str(infile))
+
+            img = cv2.resize( img, (640,480) )
+            img = cv2.resize( img, (1024,768) )
+
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+            fimg = img.astype(float) / 256.0
+            fimg = 1-fimg
+
+            outimg = (fimg * 255).astype(np.ubyte)
+            cv2.imwrite(str(outfile), outimg)
+
 
 if __name__ == "__main__":
 
@@ -50,6 +70,10 @@ if __name__ == "__main__":
     parser.add_argument('--output-dir', dest='outdir', nargs='?',
                         required=True,
                         help="Output directory (will be create if it doesn't exist)" )
+
+    parser.add_argument("--whiteout", action="store_true")
+
+    parser.add_argument("--false-swir", dest='swir', action="store_true")
 
     parser.add_argument("--log", nargs='?', default="INFO")
 
@@ -61,4 +85,10 @@ if __name__ == "__main__":
     if not os.path.exists( args.outdir ):
             os.makedirs( args.outdir )
 
-    MakeWhiteout(args).run()
+
+    make = MakeProducts(args)
+
+    if args.whiteout:
+        make.makeWhiteout()
+    elif args.swir:
+        make.makeSwir()
