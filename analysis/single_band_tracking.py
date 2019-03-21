@@ -37,6 +37,9 @@ class SingleBandTracker:
 
         self.matchAll()
 
+        self.computeHomographyAll()
+
+
 
 
         return
@@ -118,8 +121,28 @@ class SingleBandTracker:
         cv2.imwrite( str( self.workdir("matches", imgname=self.inputs[i] )), img )
 
 
+    ##=== Homography calculation ==
+
+    def computeHomographyAll(self):
+
+        self.homography = [None] * len(self.matches)
+
+        for i in range( 0, len(self.matches) ):
+
+            ## Convert matches to points
+            pointsA = [ self.detections[i  ]["kp"][j.queryIdx].pt for j in self.matches[i] ]
+            pointsB = [ self.detections[i+1]["kp"][j.trainIdx].pt for j in self.matches[i] ]
+
+            self.homography[i] = cv2.computeHomography( pointsA, pointsB, cv2.RANSAC )
 
 
+            print(self.homography[i])
+
+
+
+
+
+##==== =======
 
 if __name__ == "__main__":
 
