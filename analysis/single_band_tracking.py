@@ -104,6 +104,11 @@ class SingleBandTracker:
 
         matches = matcher.match( detA["descriptors"], detB["descriptors"])
 
+        # Sort matches by score
+        matches.sort(key=lambda x: x.distance, reverse=False)
+        numGoodMatches = int(len(matches) * 0.50)
+        matches = matches[:numGoodMatches]
+
         return matches
 
 
@@ -116,7 +121,7 @@ class SingleBandTracker:
         imgA = cv2.imread( str( self.inputs[i] ))
         imgB = cv2.imread( str( self.inputs[j] ))
 
-        img = cv2.drawMatches( imgA, detA["kp"], imgB, detB["kp"], matches[:10], None, flags=2 )
+        img = cv2.drawMatches( imgA, detA["kp"], imgB, detB["kp"], matches, None, flags=2 )
 
         cv2.imwrite( str( self.workdir("matches", imgname=self.inputs[i] )), img )
 
@@ -129,16 +134,44 @@ class SingleBandTracker:
 
         for i in range( 0, len(self.matches) ):
 
+          logging.debug("Computing homography %d" % i)
+
             ## Convert matches to points
-            pointsA = [ self.detections[i  ]["kp"][j.queryIdx].pt for j in self.matches[i] ]
-            pointsB = [ self.detections[i+1]["kp"][j.trainIdx].pt for j in self.matches[i] ]
+          pointsA = np.zeros((len(self.matches[i]), 2), dtype=np.float32)
+          pointsB = np.zeros((len(self.matches[i]), 2), dtype=np.float32)
 
-            self.homography[i] = cv2.computeHomography( pointsA, pointsB, cv2.RANSAC )
+          # logging.debug("Detection lengths: %d %d" % (len(self.detections[i  ]["kp"]),len(self.detections[i+1]["kp"])))
+          # logging.debug("    Match lengths: %s %s" % (pointsA.shape, pointsB.shape))
+
+          for j, match in enumerate(self.matches[i]):
+            # logging.debug("%d Indices: %d %d" % (i, match.queryIdx, match.trainIdx))
+            pointsA[j, :] = self.detections[i  ]["kp"][match.queryIdx].pt
+            pointsB[j, :] = self.detections[i+1]["kp"][match.trainIdx].pt
+
+          h,mask = cv2.findHomography( pointsA, pointsB, cv2.RANSAC )
+
+          self.homography[i] = h
+
+          self.drawHomography(i)
 
 
-            print(self.homography[i])
+    def drawHomography(self,i):
+        matches = self.homography[i]
 
+        imgA = cv2.imread( str( self.inputs[i  ] ))
+        imgB = cv2.imread( str( self.inputs[i+1] ))
 
+        h,w,channels=imgA.shape
+
+        imgBwarped = cv2.warpPerspective( imgB, np.linalg.inv(self.homography[i]), (w,h) )
+
+        ## Overlay imgA onto imgB?
+
+        alpha = 0.5
+        imgBlended = alpha*imgBwarped + (1-alpha)*imgA
+
+        cv2.imwrite( str( self.workdir("warped", imgname=self.inputs[i] )), imgBwarped )
+        cv2.imwrite( str( self.workdir("blended", imgname=self.inputs[i] )), imgBlended )
 
 
 
