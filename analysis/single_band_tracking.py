@@ -59,7 +59,7 @@ class SingleBandTracker:
 
             self.detections[i] = {"kp": kp, "descriptors": desc }
 
-            self.drawDetections( img, self.detections[i], output=self.workdir("SURF", imgname=imgname ) )
+            self.drawDetections( img, self.detections[i], output=self.workdir("features", imgname=imgname ) )
 
             logging.info("Detected %d features" % (len(self.detections[i]["kp"])))
 
@@ -70,7 +70,7 @@ class SingleBandTracker:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
         # detect and extract features from the image
-        descriptor = cv2.ORB_create(nfeatures=100)
+        descriptor = cv2.ORB_create(nfeatures=400)
         (kps, features) = descriptor.detectAndCompute(image, None)
 
         # convert the keypoints from KeyPoint objects to NumPy
@@ -93,6 +93,16 @@ class SingleBandTracker:
         self.matches = [None] * (len(self.detections)-1)
 
         for i in range( 0, len(self.detections)-1 ):
+
+            logging.debug("Checking %d %d %d" % (i,len(self.detections[i]["kp"]),len(self.detections[i+1]["kp"])))
+
+            if not self.detections[i] or not self.detections[i+1]:
+                continue
+
+            if( len(self.detections[i]["kp"]) < 10 or len(self.detections[i+1]["kp"]) < 10 ):
+              continue
+
+            logging.info("Matches between %d and %d" % (i,i+1))
 
             self.matches[i] = self.match( self.detections[i], self.detections[i+1] )
             self.drawMatch( i,i+1 )
@@ -133,6 +143,9 @@ class SingleBandTracker:
         self.homography = [None] * len(self.matches)
 
         for i in range( 0, len(self.matches) ):
+
+          if not(self.matches[i]):
+            continue
 
           logging.debug("Computing homography %d" % i)
 

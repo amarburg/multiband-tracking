@@ -33,7 +33,7 @@ class MakeProducts:
 
             ## Convert to float
 
-            exp = max(0.0, (sz-i-1)) / sz
+            exp = np.power(max(0.0, (sz-i-1)) / sz, 1.5)
             print(exp)
 
             fimg = np.power( fimg, exp )
