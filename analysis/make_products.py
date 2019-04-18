@@ -29,14 +29,14 @@ class MakeProducts:
 
             img = cv2.imread(str(infile))
 
-            fimg = img.astype(float) / 256.0
+            fimg = img.astype(float) / 255.0
 
             ## Convert to float
-
-            exp = np.power(max(0.0, (sz-i-1)) / sz, 1.5)
+            exp = np.power(max(0.0, (sz-i-1)) / sz, 2)
             print(exp)
 
             fimg = np.power( fimg, exp )
+            fimg = np.clip( fimg, np.power(0.02, exp), 255 )
 
             outimg = (fimg * 255).astype(np.ubyte)
             cv2.imwrite(str(outfile), outimg)

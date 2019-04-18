@@ -39,9 +39,6 @@ class SingleBandTracker:
 
         self.computeHomographyAll()
 
-
-
-
         return
 
 
@@ -49,6 +46,9 @@ class SingleBandTracker:
 
     def detectAll( self ):
         self.detections = [None]*len(self.inputs)
+
+        if self.outputdir:
+          outfile = open( self.outputdir / "detections.csv", "w")
 
         for i,imgname in enumerate(self.inputs):
             logging.debug("Detecting on %s" % imgname)
@@ -63,6 +63,9 @@ class SingleBandTracker:
 
             logging.info("Detected %d features" % (len(self.detections[i]["kp"])))
 
+            if outfile:
+                outfile.write("%s\n" % ",".join([Path(self.inputs[i]).name, str(len(self.detections[i]["kp"]))]) )
+
 
     def detectAndDescribe(self, image):
 
@@ -70,7 +73,7 @@ class SingleBandTracker:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
         # detect and extract features from the image
-        descriptor = cv2.ORB_create(nfeatures=400)
+        descriptor = cv2.ORB_create(nfeatures=2000)
         (kps, features) = descriptor.detectAndCompute(image, None)
 
         # convert the keypoints from KeyPoint objects to NumPy
@@ -142,6 +145,9 @@ class SingleBandTracker:
 
         self.homography = [None] * len(self.matches)
 
+        if self.outputdir:
+          outfile = open( self.outputdir / "homography.csv", "w")
+
         for i in range( 0, len(self.matches) ):
 
           if not(self.matches[i]):
@@ -166,6 +172,15 @@ class SingleBandTracker:
           self.homography[i] = h
 
           self.drawHomography(i)
+
+          if outfile:
+              inliers = np.count_nonzero(mask)
+              csv_out = ",".join([Path(self.inputs[i]).name, str(inliers)])
+              outfile.write("%s\n" % csv_out )
+
+
+        if outfile:
+          outfile.close()
 
 
     def drawHomography(self,i):
